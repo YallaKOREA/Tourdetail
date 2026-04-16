@@ -174,7 +174,7 @@
         if (!item.content || item.content.length === 0) return;
 
         // 한글 및 불필요한 기호 제거
-        var cleanTitle = item.title ? item.title.replace(/[\u3131-\uD79D]/gu, '').replace(/[+*]/g, '').trim() : "تفاصيل الرحلة";
+        var cleanTitle = item.title || "تفاصيل الرحلة";
         var isActive = (item.date === tomorrowStr);
 
         html += '<div class="card ' + (isActive ? 'active' : '') + '">';
