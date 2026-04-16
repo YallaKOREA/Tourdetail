@@ -19,9 +19,11 @@
     }
     .container { max-width: 500px; margin: 0 auto; }
 
+    /* 고객 코드가 들어갈 메인 타이틀 */
     .title {
-      text-align: center; font-size: 24px; font-weight: 900;
+      text-align: center; font-size: 26px; font-weight: 900;
       color: var(--brand-orange); margin: 15px 0;
+      min-height: 32px;
     }
 
     .card {
@@ -36,7 +38,7 @@
       background: var(--brand-blue); color: #fff;
       padding: 4px 12px; border-radius: 20px;
       font-size: 14px; font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .card-header {
@@ -55,7 +57,7 @@
     }
     .inner-padding { padding: 16px; }
 
-    .card.active .card-content { max-height: 2000px; }
+    .card.active .card-content { max-height: 3000px; }
     .card.active .arrow { transform: rotate(180deg); }
 
     .info-line {
@@ -89,13 +91,14 @@
 </head>
 <body>
   <div class="container">
-    <div class="title">معلومات الرحلة</div>
+    <div class="title" id="main-title">معلومات الرحلة</div>
 
     <div style="text-align:center; margin-bottom:15px;">
       <img
-        src="https://lh3.googleusercontent.com/d/1nyYG89QTwwoZzkRQ1LLof4cqsEta5I0Q=s2000"
+        src="https://raw.githubusercontent.com/YallaKOREA/Tourdetail/main/logo.png" 
         alt="Yalla Korea Logo"
         style="width:420px; max-width:98vw; height:auto; display:block; margin:0 auto;"
+        onerror="this.style.display='none'"
       />
     </div>
 
@@ -107,10 +110,9 @@
   </div>
 
   <script>
-    // ✅ 배포 ID (새 버전으로 업데이트 시 여기만 바꾸면 됨)
+    // ✅ 배포 ID (Code.gs 배포 후 버전이 바뀌었다면 여기를 확인하세요)
     var APPS_SCRIPT_ID = "AKfycbwttrdIkTeCoo55WWehNfk_lvlKFHDyY4NJ1praasIDG1p_d_WOtr0jkjRjZbV36SkR";
 
-    // URL에서 code 파라미터 가져오기
     function getParam(name) {
       var url = new URL(window.location.href);
       return url.searchParams.get(name) || "TOUR";
@@ -119,7 +121,6 @@
     var customerCode = getParam("code");
     var apiUrl = "https://script.google.com/macros/s/" + APPS_SCRIPT_ID + "/exec?code=" + encodeURIComponent(customerCode);
 
-    // 오늘/내일 날짜 계산 (한국시간 KST)
     function getTomorrowKST() {
       var now = new Date();
       var kst = new Date(now.getTime() + (9 * 60 * 60 * 1000));
@@ -155,21 +156,33 @@
       return '<div class="info-line">' + timeReplaced + '</div>';
     }
 
-    function renderSchedule(scheduleList) {
+    function renderSchedule(data) {
+      // 1) 메인 타이틀을 시트의 고객 코드로 변경
+      if (data.customerCode) {
+          document.getElementById('main-title').innerText = data.customerCode;
+      }
+
       var container = document.getElementById('schedule-container');
       var html = '';
 
-      scheduleList.forEach(function(item) {
+      if (!data.scheduleList || data.scheduleList.length === 0) {
+          container.innerHTML = '<div class="loading">일정 데이터가 없습니다.</div>';
+          return;
+      }
+
+      data.scheduleList.forEach(function(item) {
         if (!item.content || item.content.length === 0) return;
 
-        var cleanTitle = item.title.replace(/[\u3131-\uD79D]/gu, '').trim();
+        // 한글 및 불필요한 기호 제거
+        var cleanTitle = item.title ? item.title.replace(/[\u3131-\uD79D]/gu, '').replace(/[+*]/g, '').trim() : "تفاصيل الرحلة";
         var isActive = (item.date === tomorrowStr);
 
         html += '<div class="card ' + (isActive ? 'active' : '') + '">';
         html += '<div class="card-header" onclick="this.parentElement.classList.toggle(\'active\')">';
         html += '<div class="header-text">';
+        // 2) 날짜 배지 밑에 아랍어 제목 배치
         html += '<span class="date-badge">' + item.date + '</span>';
-        html += '<div style="font-size:19px;font-weight:900;color:var(--brand-blue);">📍 ' + (cleanTitle || 'تفاصيل الرحلة') + '</div>';
+        html += '<div style="font-size:19px;font-weight:900;color:var(--brand-blue); margin-top:4px;">📍 ' + cleanTitle + '</div>';
         html += '</div><div class="arrow">▼</div></div>';
         html += '<div class="card-content"><div class="inner-padding">';
 
@@ -184,7 +197,7 @@
         html += '</div></div></div>';
       });
 
-      container.innerHTML = html || '<div class="loading">일정 데이터가 없습니다.</div>';
+      container.innerHTML = html;
     }
 
     // 데이터 fetch
@@ -195,7 +208,7 @@
           document.getElementById('schedule-container').innerHTML = '<div class="loading">❌ 오류: ' + data.error + '</div>';
           return;
         }
-        renderSchedule(data.scheduleList);
+        renderSchedule(data);
       })
       .catch(function(err) {
         document.getElementById('schedule-container').innerHTML = '<div class="loading">❌ 데이터를 불러올 수 없습니다.<br>' + err.message + '</div>';
